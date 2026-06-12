@@ -4,10 +4,12 @@ import CategoryFilter from '../components/CategoryFilter';
 import TemplateCard from '../components/TemplateCard';
 import RecommendationSection from '../components/RecommendationSection';
 import { useSearch } from '../context/SearchContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
   const { searchQuery, setSearchQuery, recentSearches, setRecentSearches, refreshRecentSearches } =
     useSearch();
+  const { user, openAuthModal } = useAuth();
   const [category, setCategory] = useState('All');
   const [templates, setTemplates] = useState([]);
   const [personalized, setPersonalized] = useState([]);
@@ -98,24 +100,69 @@ export default function Home() {
 
       <RecommendationSection
         title="Recommended For You"
-        subtitle="Based on categories you view most often"
+        subtitle={user ? "Based on categories you view most often" : "Sign in to get personalized recommendations"}
         items={personalized}
         showScore
-      />
+      >
+        {!user && (
+          <div className="rounded-xl bg-indigo-50 px-6 py-8 text-center ring-1 ring-indigo-100">
+            <p className="text-sm font-medium text-indigo-700">
+              Sign in to see personalized recommendations
+            </p>
+            <button
+              type="button"
+              onClick={openAuthModal}
+              className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+            >
+              Sign In
+            </button>
+          </div>
+        )}
+      </RecommendationSection>
 
       <RecommendationSection
         title="Trending For You"
-        subtitle="Templates you've viewed recently"
+        subtitle={user ? "Templates you've viewed recently" : "Sign in to see your trending picks"}
         items={trending}
         emptyMessage="Open a few templates to see trending picks here."
-      />
+      >
+        {!user && (
+          <div className="rounded-xl bg-indigo-50 px-6 py-8 text-center ring-1 ring-indigo-100">
+            <p className="text-sm font-medium text-indigo-700">
+              Sign in to see your trending templates
+            </p>
+            <button
+              type="button"
+              onClick={openAuthModal}
+              className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+            >
+              Sign In
+            </button>
+          </div>
+        )}
+      </RecommendationSection>
 
       <RecommendationSection
         title="Most Viewed"
-        subtitle="Your most opened templates"
+        subtitle={user ? "Your most opened templates" : "Sign in to see your most viewed templates"}
         items={mostViewed}
         emptyMessage="Your most viewed templates will appear here."
-      />
+      >
+        {!user && (
+          <div className="rounded-xl bg-indigo-50 px-6 py-8 text-center ring-1 ring-indigo-100">
+            <p className="text-sm font-medium text-indigo-700">
+              Sign in to see your most viewed templates
+            </p>
+            <button
+              type="button"
+              onClick={openAuthModal}
+              className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+            >
+              Sign In
+            </button>
+          </div>
+        )}
+      </RecommendationSection>
 
       <section>
         <div className="mb-5 flex items-end justify-between">

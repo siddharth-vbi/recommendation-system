@@ -32,9 +32,10 @@ The following changes have been applied to set up the project properly:
 1. **Moved `.git` from `frontend/` to repo root** — the repository now tracks the full project (backend + frontend) instead of just the frontend.
 2. **Added `.gitignore`** at root — excludes `node_modules/`, `.vite/`, `dist/`, `.env`, `.env.local`, `*.log`, `.DS_Store`, `Thumbs.db`.
 3. **Added backend API** — full Express + PostgreSQL backend with auth, template CRUD, activity tracking, and recommendation endpoints.
-4. **Added new frontend features** — `AuthContext`, `Login`/`Register` pages, `api.js` interceptor.
+4. **Added new frontend features** — `AuthContext`, `AuthModal` (login/register popup), `api.js` interceptor.
 5. **Moved docs to root** — `AGENTS.md` and `README.md` now live at repo root for project-wide discoverability.
 6. **Seeded database** — `backend/seeders/seed.js` populates 35 templates.
+7. **Auth modal popup** — Login/Register replaced with `AuthModal` component. Appears as a popup when unauthenticated users click "Like", "Sign In", or try to access recommendation sections. The separate `/login` and `/register` routes have been removed.
 
 ## Project Structure
 
@@ -167,19 +168,24 @@ Tracks search queries: id, query, userId FK, createdAt.
 |------|-----------|-------|
 | `/` | Home | Category filter + rec sections |
 | `/template/:id` | TemplateDetails | `useParams()` |
-| `/login` | Login | Email/password form |
-| `/register` | Register | Name/email/password form |
 
 - Use `<Link to="/template/:id">` from react-router-dom
 - Use `useParams()` for `:id`, `useNavigate()` for programmatic nav
 - BrowserRouter is in `main.jsx`, wrapped by AuthProvider then SearchProvider then App
+- Auth (login/register) is rendered as a popup modal (`AuthModal`) — no dedicated route
 
 ## Auth Flow
-1. User registers or logs in → JWT token stored in `localStorage('token')`
-2. `AuthContext` reads token on mount, calls `/api/auth/me` to validate
-3. `api.js` axios interceptor attaches `Authorization: Bearer <token>` to every request
-4. 401 responses auto-clear token + user from localStorage
-5. Unauthenticated users see "Sign In" button; authenticated users see name + "Sign Out"
+1. **AuthModal** (`components/AuthModal.jsx`) — a modal popup with tabbed "Sign In" / "Create Account" forms
+2. **Triggers** — modal opens when unauthenticated users click:
+   - "Sign In" button in navbar
+   - "Like" button on template detail page
+   - "Sign In" prompt buttons in recommendation sections (Home)
+3. User registers or logs in → JWT token stored in `localStorage('token')`
+4. `AuthContext` reads token on mount, calls `/api/auth/me` to validate
+5. `api.js` axios interceptor attaches `Authorization: Bearer <token>` to every request
+6. 401 responses auto-clear token + user from localStorage
+7. Modal closes on successful auth; user can then interact freely
+8. Authenticated users see their name + "Sign Out" in the navbar
 
 ## Recommendation Algorithms
 
@@ -249,7 +255,9 @@ Returns up to 8 unique matches from titles, categories, and tags matching the qu
 - `RecommendationSection` receives `{ title, subtitle, items, showScore, emptyMessage }` — renders grid of TemplateCard
 - `SearchBar` receives `{ value, onChange, onSearch, variant? }` — controlled input
 - Search state via `useContext(SearchContext)` — `searchQuery`, `setSearchQuery`, `submitSearch`
-- Auth state via `useContext(AuthContext)` — `user`, `loading`, `login`, `register`, `logout`
+- Auth state via `useContext(AuthContext)` — `user`, `loading`, `login`, `register`, `logout`, `openAuthModal`, `closeAuthModal`, `showAuthModal`
+- To show auth popup: call `openAuthModal()` anywhere — modal is rendered at the App layout level via `AuthModal` component
+- `AuthModal` handles login/register in a tabbed popup; closes on successful auth or backdrop click
 
 ## Build & Run
 - Frontend: `cd frontend && npm run dev`

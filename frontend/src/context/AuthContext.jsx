@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
     return stored ? JSON.parse(stored) : null;
   });
   const [loading, setLoading] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -29,6 +30,9 @@ export function AuthProvider({ children }) {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const openAuthModal = useCallback(() => setShowAuthModal(true), []);
+  const closeAuthModal = useCallback(() => setShowAuthModal(false), []);
 
   const login = useCallback(async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
@@ -53,7 +57,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, showAuthModal, openAuthModal, closeAuthModal }}>
       {children}
     </AuthContext.Provider>
   );
