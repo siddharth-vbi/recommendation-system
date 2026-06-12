@@ -1,9 +1,8 @@
 import { Routes, Route, Link } from 'react-router-dom';
 import Home from './pages/Home';
 import TemplateDetails from './pages/TemplateDetails';
-import Login from './pages/Login';
-import Register from './pages/Register';
 import SearchBar from './components/SearchBar';
+import AuthModal from './components/AuthModal';
 import { SearchProvider, useSearch } from './context/SearchContext';
 import { useAuth } from './context/AuthContext';
 
@@ -36,7 +35,7 @@ function NavbarSearchMobile() {
 }
 
 function AppLayout() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, openAuthModal } = useAuth();
 
   return (
     <div className="min-h-screen">
@@ -72,12 +71,13 @@ function AppLayout() {
                   </button>
                 </div>
               ) : (
-                <Link
-                  to="/login"
+                <button
+                  type="button"
+                  onClick={openAuthModal}
                   className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
                 >
                   Sign In
-                </Link>
+                </button>
               )
             )}
             <span className="hidden rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 lg:inline">
@@ -95,8 +95,6 @@ function AppLayout() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/template/:id" element={<TemplateDetails />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
         </Routes>
       </main>
 
@@ -106,6 +104,8 @@ function AppLayout() {
           with PostgreSQL
         </div>
       </footer>
+
+      <AuthModal />
     </div>
   );
 }

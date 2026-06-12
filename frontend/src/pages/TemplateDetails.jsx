@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api';
+import { useAuth } from '../context/AuthContext';
 import TemplateCard from '../components/TemplateCard';
 import RecommendationSection from '../components/RecommendationSection';
 
 export default function TemplateDetails() {
   const { id } = useParams();
+  const { user, openAuthModal } = useAuth();
   const [template, setTemplate] = useState(null);
   const [liked, setLiked] = useState(false);
   const [similar, setSimilar] = useState([]);
@@ -23,6 +25,10 @@ export default function TemplateDetails() {
 
   function handleLike() {
     if (!template) return;
+    if (!user) {
+      openAuthModal();
+      return;
+    }
     api.post('/activity/like', { templateId: template.id }).then((res) => {
       setLiked(res.data.liked);
     }).catch(() => {});
