@@ -1,9 +1,7 @@
-import { CATEGORIES } from '../data/templates';
-
-export default function CategoryFilter({ selected, onChange }) {
+export default function CategoryFilter({ selected, onChange, categories = ['All'] }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {CATEGORIES.map((category) => {
+      {categories.map((category) => {
         const isActive = selected === category;
 
         return (

@@ -1,39 +1,62 @@
-import { useMemo, useState } from 'react';
-import { templates } from '../data/templates';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import api from '../api';
 import CategoryFilter from '../components/CategoryFilter';
 import TemplateCard from '../components/TemplateCard';
 import RecommendationSection from '../components/RecommendationSection';
-import {
-  filterTemplates,
-  getPersonalizedRecommendations,
-  getTrendingTemplates,
-  getMostViewedTemplates,
-} from '../utils/recommendationEngine';
-import { trackSearch, getRecentSearches } from '../utils/localStorage';
 import { useSearch } from '../context/SearchContext';
 
 export default function Home() {
-  const { searchQuery, setSearchQuery, recentSearches, setRecentSearches } =
+  const { searchQuery, setSearchQuery, recentSearches, setRecentSearches, refreshRecentSearches } =
     useSearch();
   const [category, setCategory] = useState('All');
+  const [templates, setTemplates] = useState([]);
+  const [personalized, setPersonalized] = useState([]);
+  const [trending, setTrending] = useState([]);
+  const [mostViewed, setMostViewed] = useState([]);
+  const [categories, setCategories] = useState(['All']);
+  const [activityKey, setActivityKey] = useState(0);
+
+  const refreshActivity = useCallback(() => setActivityKey((k) => k + 1), []);
+
+  useEffect(() => {
+    api.get('/templates').then((res) => setTemplates(res.data));
+    api.get('/templates/categories').then((res) => setCategories(res.data));
+  }, []);
+
+  useEffect(() => {
+    refreshActivity();
+    window.addEventListener('focus', refreshActivity);
+    return () => window.removeEventListener('focus', refreshActivity);
+  }, [refreshActivity]);
+
+  useEffect(() => {
+    api.get('/recommendations/personalized').then((res) => setPersonalized(res.data)).catch(() => setPersonalized([]));
+    api.get('/recommendations/trending').then((res) => setTrending(res.data)).catch(() => setTrending([]));
+    api.get('/recommendations/most-viewed').then((res) => setMostViewed(res.data)).catch(() => setMostViewed([]));
+  }, [activityKey, recentSearches]);
 
   const filteredTemplates = useMemo(
-    () => filterTemplates(templates, searchQuery, category),
-    [searchQuery, category]
-  );
+    () => {
+      const query = searchQuery.trim().toLowerCase();
+      return templates.filter((template) => {
+        const matchesCategory = category === 'All' || template.category === category;
+        if (!matchesCategory) return false;
+        if (!query) return true;
 
-  const personalized = useMemo(
-    () => getPersonalizedRecommendations(templates, 4),
-    [recentSearches]
-  );
+        const inTitle = template.title.toLowerCase().includes(query);
+        const inDescription = template.description.toLowerCase().includes(query);
+        const inTags = template.tags.some((tag) => tag.toLowerCase().includes(query));
+        const inCategory = template.category.toLowerCase().includes(query);
 
-  const trending = useMemo(() => getTrendingTemplates(templates, 4), [recentSearches]);
-  const mostViewed = useMemo(() => getMostViewedTemplates(templates, 4), [recentSearches]);
+        return inTitle || inDescription || inTags || inCategory;
+      });
+    },
+    [templates, searchQuery, category]
+  );
 
   function handleRecentSearchClick(term) {
     setSearchQuery(term);
-    trackSearch(term);
-    setRecentSearches(getRecentSearches());
+    api.post('/activity/search', { query: term }).catch(() => {});
   }
 
   return (
@@ -70,7 +93,7 @@ export default function Home() {
       )}
 
       <section className="mb-8">
-        <CategoryFilter selected={category} onChange={setCategory} />
+        <CategoryFilter selected={category} onChange={setCategory} categories={categories} />
       </section>
 
       <RecommendationSection

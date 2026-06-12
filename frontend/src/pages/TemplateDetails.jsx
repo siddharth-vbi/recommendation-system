@@ -1,36 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getTemplateById, templates } from '../data/templates';
+import api from '../api';
 import TemplateCard from '../components/TemplateCard';
 import RecommendationSection from '../components/RecommendationSection';
-import { getSimilarTemplates } from '../utils/recommendationEngine';
-import {
-  trackView,
-  trackLike,
-  isLiked as checkIsLiked,
-} from '../utils/localStorage';
 
 export default function TemplateDetails() {
   const { id } = useParams();
-  const template = getTemplateById(id);
+  const [template, setTemplate] = useState(null);
   const [liked, setLiked] = useState(false);
+  const [similar, setSimilar] = useState([]);
 
   useEffect(() => {
-    if (template) {
-      trackView(template.id);
-      setLiked(checkIsLiked(template.id));
-    }
-  }, [template]);
-
-  const similarItems = useMemo(() => {
-    if (!template) return [];
-    return getSimilarTemplates(template, templates, 6);
-  }, [template]);
+    api.get(`/templates/${id}`).then((res) => {
+      setTemplate(res.data);
+      api.get('/activity/liked-ids').then((lres) => {
+        setLiked(lres.data.includes(res.data.id));
+      }).catch(() => {});
+      api.post('/activity/view', { templateId: res.data.id }).catch(() => {});
+      api.get(`/recommendations/similar/${id}`).then((sres) => setSimilar(sres.data)).catch(() => {});
+    }).catch(() => setTemplate(null));
+  }, [id]);
 
   function handleLike() {
     if (!template) return;
-    const nowLiked = trackLike(template.id);
-    setLiked(nowLiked);
+    api.post('/activity/like', { templateId: template.id }).then((res) => {
+      setLiked(res.data.liked);
+    }).catch(() => {});
   }
 
   if (!template) {
@@ -57,7 +52,6 @@ export default function TemplateDetails() {
       </Link>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        {/* Preview */}
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
           <img
             src={template.thumbnail}
@@ -66,7 +60,6 @@ export default function TemplateDetails() {
           />
         </div>
 
-        {/* Info */}
         <div>
           <span className="inline-block rounded-full bg-indigo-100 px-3 py-1 text-sm font-medium text-indigo-700">
             {template.category}
@@ -108,25 +101,23 @@ export default function TemplateDetails() {
         </div>
       </div>
 
-      {/* Similar Templates — Phase 1 Content-Based */}
       <div className="mt-12">
         <RecommendationSection
           title="Similar Templates"
           subtitle="Content-based filtering: same category + matching tags"
-          items={similarItems}
+          items={similar}
           showScore
         />
       </div>
 
-      {/* Why Recommended — detailed breakdown for top pick */}
-      {similarItems.length > 0 && (
+      {similar.length > 0 && (
         <section className="mb-10 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <h2 className="text-lg font-bold text-slate-900">
             Why Recommended?
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Top pick: <strong>{similarItems[0].template.title}</strong> (score:{' '}
-            {similarItems[0].score})
+            Top pick: <strong>{similar[0].template.title}</strong> (score:{' '}
+            {similar[0].score})
           </p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -135,11 +126,11 @@ export default function TemplateDetails() {
                 Scoring breakdown
               </h3>
               <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                {template.category === similarItems[0].template.category && (
+                {template.category === similar[0].template.category && (
                   <li>✓ Same category (+10 points)</li>
                 )}
                 {template.tags.filter((t) =>
-                  similarItems[0].template.tags.includes(t)
+                  similar[0].template.tags.includes(t)
                 ).map((tag) => (
                   <li key={tag}>✓ Matching tag &quot;{tag}&quot; (+5 points)</li>
                 ))}
@@ -151,7 +142,7 @@ export default function TemplateDetails() {
                 Recommendation reasons
               </h3>
               <ul className="mt-2 space-y-1 text-sm text-emerald-700">
-                {similarItems[0].reasons.map((reason) => (
+                {similar[0].reasons.map((reason) => (
                   <li key={reason}>✓ {reason}</li>
                 ))}
               </ul>
