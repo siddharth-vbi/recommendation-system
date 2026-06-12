@@ -3,7 +3,12 @@ import {
   buildRecommendationReasons,
   SCORES,
 } from './scoring';
-import { getCategoryViewCounts, getLikedTemplateIds } from './localStorage';
+import {
+  getCategoryViewCounts,
+  getLikedTemplateIds,
+  getViewedTemplateIds,
+  getViewCounts,
+} from './localStorage';
 
 /**
  * Phase 1 — Content-Based Filtering
@@ -40,6 +45,7 @@ export function getSimilarTemplates(currentTemplate, allTemplates, limit = 6) {
 export function getPersonalizedRecommendations(allTemplates, limit = 6) {
   const categoryCounts = getCategoryViewCounts(allTemplates);
   const likedIds = new Set(getLikedTemplateIds());
+  const viewedIds = new Set(getViewedTemplateIds());
 
   // No history yet — show a diverse mix from popular categories
   if (Object.keys(categoryCounts).length === 0) {
@@ -57,39 +63,34 @@ export function getPersonalizedRecommendations(allTemplates, limit = 6) {
 
   const topCategory = sortedCategories[0];
 
-  const scored = allTemplates.map((candidate) => {
-    let score = 0;
-    const reasons = [];
+  const scored = allTemplates
+    .filter((candidate) => !viewedIds.has(candidate.id))
+    .map((candidate) => {
+      let score = 0;
+      const reasons = [];
 
-    const categoryViews = categoryCounts[candidate.category] || 0;
-    if (categoryViews > 0) {
-      // More views in a category = stronger interest signal
-      score += categoryViews * SCORES.USER_CATEGORY_BONUS;
-      reasons.push(
-        `You frequently view ${candidate.category} templates (${categoryViews} views)`
-      );
-    }
-
-    if (likedIds.has(candidate.id)) {
-      score += SCORES.LIKE_BONUS;
-      reasons.push('You liked this template');
-    }
-
-    // Small boost if candidate shares tags with templates user already viewed
-    const viewedInSameCategory = allTemplates.filter(
-      (t) =>
-        t.category === candidate.category &&
-        categoryCounts[t.category]
-    );
-    if (viewedInSameCategory.length > 0 && candidate.category === topCategory) {
-      score += SCORES.SAME_CATEGORY;
-      if (!reasons.some((r) => r.includes('frequently view'))) {
-        reasons.push(`Top interest: ${topCategory}`);
+      const categoryViews = categoryCounts[candidate.category] || 0;
+      if (categoryViews > 0) {
+        score += categoryViews * SCORES.USER_CATEGORY_BONUS;
+        reasons.push(
+          `You frequently view ${candidate.category} templates (${categoryViews} views)`
+        );
       }
-    }
 
-    return { template: candidate, score, reasons };
-  });
+      if (likedIds.has(candidate.id)) {
+        score += SCORES.LIKE_BONUS;
+        reasons.push('You liked this template');
+      }
+
+      if (candidate.category === topCategory) {
+        score += SCORES.SAME_CATEGORY;
+        if (!reasons.some((r) => r.includes('frequently view'))) {
+          reasons.push(`Top interest: ${topCategory}`);
+        }
+      }
+
+      return { template: candidate, score, reasons };
+    });
 
   return scored
     .filter((item) => item.score > 0)
@@ -104,15 +105,11 @@ export function getTrendingTemplates(allTemplates, limit = 4) {
   const viewOrder = [];
   const seen = new Set();
 
-  // Import dynamically to avoid circular deps — use localStorage read
-  const raw = localStorage.getItem('templateMarketplaceActivity');
-  if (!raw) return [];
-
-  const activity = JSON.parse(raw);
-  activity.viewed.forEach(({ templateId }) => {
-    if (!seen.has(templateId)) {
-      seen.add(templateId);
-      viewOrder.push(templateId);
+  const viewedIds = getViewedTemplateIds();
+  viewedIds.forEach((id) => {
+    if (!seen.has(id)) {
+      seen.add(id);
+      viewOrder.push(id);
     }
   });
 
@@ -131,15 +128,7 @@ export function getTrendingTemplates(allTemplates, limit = 4) {
  * Most viewed templates by total view count across all sessions.
  */
 export function getMostViewedTemplates(allTemplates, limit = 4) {
-  const raw = localStorage.getItem('templateMarketplaceActivity');
-  if (!raw) return [];
-
-  const activity = JSON.parse(raw);
-  const counts = {};
-
-  activity.viewed.forEach(({ templateId }) => {
-    counts[templateId] = (counts[templateId] || 0) + 1;
-  });
+  const counts = getViewCounts();
 
   return Object.entries(counts)
     .sort(([, a], [, b]) => b - a)

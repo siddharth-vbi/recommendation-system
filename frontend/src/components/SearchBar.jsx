@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
-import { templates } from '../data/templates';
-import { getSearchSuggestions } from '../utils/searchSuggestions';
+import { useEffect, useState } from 'react';
+import api from '../api';
 
 export default function SearchBar({
   value,
@@ -8,10 +7,20 @@ export default function SearchBar({
   onSearch,
   variant = 'default',
 }) {
-  const suggestions = useMemo(
-    () => getSearchSuggestions(value, templates),
-    [value]
-  );
+  const [suggestions, setSuggestions] = useState([]);
+
+  useEffect(() => {
+    if (!value.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      api.get('/templates/suggestions', { params: { query: value } }).then((res) => {
+        setSuggestions(res.data);
+      }).catch(() => {});
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [value]);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -56,7 +65,6 @@ export default function SearchBar({
         }
       />
 
-      {/* HTML datalist — browser-native autocomplete dropdown */}
       <datalist id="template-search-suggestions">
         {suggestions.map((item) => (
           <option key={`${item.type}-${item.value}`} value={item.value}>

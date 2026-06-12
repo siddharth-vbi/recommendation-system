@@ -74,8 +74,7 @@ export function buildRecommendationReasons(
     );
   }
 
-  const likedCategories = Object.keys(userCategoryCounts);
-  if (reasons.length === 0 && likedCategories.length === 0) {
+  if (reasons.length === 0) {
     reasons.push('Popular in this marketplace');
   }
 

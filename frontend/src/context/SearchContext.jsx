@@ -1,18 +1,24 @@
 import { createContext, useContext, useState, useCallback } from 'react';
-import { trackSearch, getRecentSearches } from '../utils/localStorage';
+import api from '../api';
 
 const SearchContext = createContext(null);
 
 export function SearchProvider({ children }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [recentSearches, setRecentSearches] = useState(getRecentSearches);
+  const [recentSearches, setRecentSearches] = useState([]);
+
+  const refreshRecentSearches = useCallback(() => {
+    api.get('/activity/recent-searches').then((res) => {
+      setRecentSearches(res.data);
+    }).catch(() => {});
+  }, []);
 
   const submitSearch = useCallback((query) => {
     const trimmed = query.trim();
     if (!trimmed) return;
-    trackSearch(trimmed);
-    setRecentSearches(getRecentSearches());
-  }, []);
+    api.post('/activity/search', { query: trimmed }).catch(() => {});
+    refreshRecentSearches();
+  }, [refreshRecentSearches]);
 
   return (
     <SearchContext.Provider
@@ -22,6 +28,7 @@ export function SearchProvider({ children }) {
         recentSearches,
         setRecentSearches,
         submitSearch,
+        refreshRecentSearches,
       }}
     >
       {children}
